@@ -5,7 +5,13 @@ import (
     "log"
     "os"
     "context"
+    "time"
+    "io/ioutil"
     "googlemaps.github.io/maps"
+    "go.mongodb.org/mongo-driver/mongo"
+    "go.mongodb.org/mongo-driver/bson"
+    "go.mongodb.org/mongo-driver/mongo/readpref"
+    "go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Coords struct {
@@ -59,6 +65,35 @@ func parse_response(raw_data []maps.GeocodingResult) {
 }
 
 func main() {
-    raw_resp := geocode("Binghamton, NY")
-    parse_response(raw_resp)
+    /*raw_resp := geocode("Binghamton, NY")
+    parse_response(raw_resp)*/
+
+    temp_uri, err := ioutil.ReadFile("../Geo-Credentials/atlas2.txt")
+    uri := string(temp_uri)
+    if err != nil {
+        log.Fatalf("i'm going to off myself")
+    }
+
+    client, err := mongo.NewClient(options.Client().ApplyURI(uri))
+    if err != nil { log.Fatal(err) }
+    ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+    err = client.Connect(ctx)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer client.Disconnect(ctx)
+
+
+    err = client.Ping(ctx, readpref.Primary())
+	if err != nil {
+        fmt.Println("couldnt ping")
+		log.Fatal(err)
+	}
+
+
+    databases, err := client.ListDatabaseNames(ctx, bson.M{})
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Println(databases)
 }
